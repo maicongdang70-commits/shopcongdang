@@ -1,0 +1,165 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SHOPCONGDANG - ADMIN</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080d19;color:white;font-family:Arial}
+.container{width:min(700px,92%);margin:40px auto}
+.card{background:#151e32;border:1px solid #30405e;border-radius:14px;padding:20px;margin-bottom:18px}
+input{width:100%;padding:13px;margin:8px 0;background:#0b1324;border:1px solid #405273;border-radius:9px;color:white}
+button{width:100%;padding:13px;margin-top:8px;border:0;border-radius:9px;background:#2563eb;color:white;font-weight:bold;cursor:pointer}
+.danger{background:#dc2626}
+.result{background:#0b1324;padding:13px;margin-top:12px;border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="container">
+<h1 style="text-align:center">🔐 SHOPCONGDANG ADMIN</h1>
+
+<div class="card" id="loginBox">
+<h2>Đăng nhập Admin</h2>
+<input id="password" type="password" placeholder="Mật khẩu Admin">
+<button onclick="login()">ĐĂNG NHẬP</button>
+<div class="result" id="loginResult"></div>
+</div>
+
+<div id="panel" class="hidden">
+<div class="card">
+<h2>👤 Tìm tài khoản</h2>
+<input id="uid" placeholder="Nhập UID">
+<button onclick="searchUser()">TÌM USER</button>
+<div class="result" id="userResult"></div>
+</div>
+
+<div class="card">
+<h2>💰 Cộng tiền</h2>
+<input id="moneyUID" placeholder="UID người dùng">
+<input id="amount" type="number" min="1" placeholder="Số tiền muốn cộng">
+<button onclick="addMoney()">CỘNG TIỀN</button>
+<div class="result" id="moneyResult"></div>
+</div>
+
+<div class="card">
+<h2>📜 Lịch sử mua hàng</h2>
+<input id="historyUID" placeholder="UID người dùng">
+<button onclick="getHistory()">XEM LỊCH SỬ</button>
+<div class="result" id="historyResult"></div>
+</div>
+
+<button class="danger" onclick="logout()">ĐĂNG XUẤT</button>
+</div>
+</div>
+
+<script>
+let token = "";
+
+async function api(url, options={}) {
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            ...(options.headers || {}),
+            "x-admin-token": token
+        }
+    });
+    return response.json();
+}
+
+async function login() {
+    const password = document.getElementById("password").value;
+    const result = document.getElementById("loginResult");
+
+    try {
+        const data = await fetch("/api/admin/login", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({password})
+        }).then(r => r.json());
+
+        if (!data.success) {
+            result.textContent = data.message || "Đăng nhập thất bại";
+            return;
+        }
+
+        token = data.token;
+        document.getElementById("loginBox").classList.add("hidden");
+        document.getElementById("panel").classList.remove("hidden");
+    } catch {
+        result.textContent = "Không kết nối được server.";
+    }
+}
+
+async function searchUser() {
+    const uid = document.getElementById("uid").value.trim();
+    if (!uid) return;
+
+    try {
+        const data = await api("/api/admin/user?uid=" + encodeURIComponent(uid));
+        if (!data.success) throw new Error(data.message || "Không tìm thấy user");
+
+        document.getElementById("moneyUID").value = data.user.uid;
+        document.getElementById("historyUID").value = data.user.uid;
+        document.getElementById("userResult").textContent =
+            "Gmail: " + data.user.gmail +
+            "\nUID: " + data.user.uid +
+            "\nSố dư: " + Number(data.user.balance).toLocaleString("vi-VN") + "đ";
+    } catch(e) {
+        document.getElementById("userResult").textContent = e.message;
+    }
+}
+
+async function addMoney() {
+    const uid = document.getElementById("moneyUID").value.trim();
+    const amount = Number(document.getElementById("amount").value);
+    if (!uid || !Number.isSafeInteger(amount) || amount <= 0) {
+        document.getElementById("moneyResult").textContent = "UID hoặc số tiền không hợp lệ.";
+        return;
+    }
+
+    try {
+        const data = await api("/api/admin/add-money", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({uid, amount})
+        });
+        if (!data.success) throw new Error(data.message || "Cộng tiền thất bại");
+
+        document.getElementById("moneyResult").textContent =
+            "Đã cộng thành công!\nUID: " + data.uid +
+            "\nSố dư mới: " + Number(data.balance).toLocaleString("vi-VN") + "đ";
+        document.getElementById("amount").value = "";
+    } catch(e) {
+        document.getElementById("moneyResult").textContent = e.message;
+    }
+}
+
+async function getHistory() {
+    const uid = document.getElementById("historyUID").value.trim();
+    if (!uid) return;
+
+    try {
+        const data = await api("/api/admin/history?uid=" + encodeURIComponent(uid));
+        if (!data.success) throw new Error(data.message || "Không lấy được lịch sử");
+
+        document.getElementById("historyResult").textContent =
+            data.history && data.history.length
+            ? JSON.stringify(data.history, null, 2)
+            : "Chưa có lịch sử mua hàng.";
+    } catch(e) {
+        document.getElementById("historyResult").textContent = e.message;
+    }
+}
+
+function logout() {
+    token = "";
+    document.getElementById("panel").classList.add("hidden");
+    document.getElementById("loginBox").classList.remove("hidden");
+    document.getElementById("password").value = "";
+}
+</script>
+</body>
+</html>
