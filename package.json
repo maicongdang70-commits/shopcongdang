@@ -1,14 +1,13 @@
-
 {
-  "name": "shopcongdang",
-  "version": "1.0.0",
-  "description": "SHOPCONGDANG",
+  "name": "pt-bag-shop",
+  "version": "5.0.0",
+  "description": "PT BAG SHOP",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "pg": "^8.13.1"
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
   }
 }
